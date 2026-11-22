@@ -63,6 +63,15 @@
   let storageAvailable = true;
 
   const $ = id => document.getElementById(id);
+  const viewStage = $('view-stage');
+  const viewImage = $('view-image');
+  viewImage.insertAdjacentHTML('beforebegin',
+    '<div id="view-canvas" class="view-canvas" role="region" aria-label="照片细节" tabindex="-1"></div>');
+  const viewCanvas = $('view-canvas');
+  viewCanvas.append(viewImage);
+  $('view-pick').insertAdjacentHTML('beforebegin',
+    '<button type="button" id="view-scale" aria-controls="view-canvas">原尺寸</button>');
+  const scaleButton = $('view-scale');
   const escape = value => String(value == null ? '' : value).replace(/[&<>"']/g, char =>
     ({'&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;'})[char]);
   const asset = (id, small) => 'media/' + (small ? 't/' : '') + id + '.webp';
@@ -367,13 +376,37 @@
     focusAfterClose = trigger;
     renderViewer();
     viewer.showModal();
+    updateScaleControl();
     document.body.classList.add('locked');
+  }
+
+  function setViewerScale(enlarged, x = 0.5, y = 0.5) {
+    viewStage.classList.toggle('is-enlarged', enlarged);
+    viewCanvas.tabIndex = enlarged ? 0 : -1;
+    scaleButton.textContent = enlarged ? '适合屏幕' : '原尺寸';
+    viewCanvas.scrollLeft = enlarged ? viewImage.offsetWidth * x - viewCanvas.clientWidth / 2 : 0;
+    viewCanvas.scrollTop = enlarged ? viewImage.offsetHeight * y - viewCanvas.clientHeight / 2 : 0;
+  }
+
+  function updateScaleControl() {
+    if (!viewer.open) return;
+    const photo = photos.get(viewerIds[viewerIndex]);
+    const canEnlarge = photo.width > viewCanvas.clientWidth || photo.height > viewCanvas.clientHeight;
+    scaleButton.disabled = !canEnlarge;
+    viewCanvas.classList.toggle('can-enlarge', canEnlarge);
+    if (!canEnlarge && viewStage.classList.contains('is-enlarged')) setViewerScale(false);
   }
 
   function renderViewer(direction = 0) {
     const photo = photos.get(viewerIds[viewerIndex]);
     const project = projects.get(photo.project);
-    setFrameImage($('view-image'),photo,direction,projectTitle(project) + '，' + photo.caption);
+    if (viewImage.dataset.frame !== photo.id) {
+      setViewerScale(false);
+      viewImage.width = photo.width;
+      viewImage.height = photo.height;
+    }
+    setFrameImage(viewImage,photo,direction,projectTitle(project) + '，' + photo.caption);
+    updateScaleControl();
     showAnnotation($('view-note'),photo);
     $('view-count').textContent = pad(viewerIndex+1) + ' / ' + pad(viewerIds.length);
     $('view-title').textContent = photo.caption;
@@ -440,6 +473,30 @@
   }, {passive:true});
   main.addEventListener('touchcancel', () => { readerTouch = null; }, {passive:true});
   document.querySelector('.skip').addEventListener('click', event => { event.preventDefault(); main.focus(); });
+  scaleButton.addEventListener('click', () => setViewerScale(!viewStage.classList.contains('is-enlarged')));
+  viewImage.addEventListener('click', event => {
+    if (scaleButton.disabled || viewStage.classList.contains('is-enlarged')) return;
+    const rect = viewImage.getBoundingClientRect();
+    if (rect.width && rect.height) {
+      setViewerScale(true, (event.clientX - rect.left) / rect.width, (event.clientY - rect.top) / rect.height);
+    }
+  });
+  if ('ResizeObserver' in window) new ResizeObserver(updateScaleControl).observe(viewCanvas);
+  else window.addEventListener('resize', updateScaleControl);
+
+  let panStart = null;
+  viewCanvas.addEventListener('pointerdown', event => {
+    if (event.pointerType !== 'mouse' || event.button !== 0 || !viewStage.classList.contains('is-enlarged')) return;
+    panStart = {x: event.clientX, y: event.clientY, left: viewCanvas.scrollLeft, top: viewCanvas.scrollTop};
+    viewCanvas.setPointerCapture(event.pointerId);
+  });
+  viewCanvas.addEventListener('pointermove', event => {
+    if (!panStart || !viewCanvas.hasPointerCapture(event.pointerId)) return;
+    viewCanvas.scrollLeft = panStart.left + panStart.x - event.clientX;
+    viewCanvas.scrollTop = panStart.top + panStart.y - event.clientY;
+  });
+  viewCanvas.addEventListener('lostpointercapture', () => { panStart = null; });
+
   $('view-close').addEventListener('click', () => viewer.close());
   $('view-project').addEventListener('click', () => viewer.close());
   $('view-prev').addEventListener('click', () => shiftPhoto(-1));
@@ -447,21 +504,28 @@
   $('view-pick').addEventListener('click', () => togglePick(viewerIds[viewerIndex]));
   viewer.addEventListener('close', () => {
     document.body.classList.remove('locked');
+    setViewerScale(false);
+    if (focusAfterClose?.isConnected && focusAfterClose.id === 'reader-open') {
+      const index = readerPhotos.findIndex(p => p.id === viewerIds[viewerIndex]);
+      if (index >= 0) showReader(index);
+    }
     if (focusAfterClose && focusAfterClose.isConnected) focusAfterClose.focus({preventScroll:true});
     else main.focus({preventScroll:true});
     focusAfterClose = null;
   });
   viewer.addEventListener('keydown', event => {
+    if (event.target === viewCanvas && viewStage.classList.contains('is-enlarged')) return;
     if (event.key === 'ArrowLeft' || event.key === 'ArrowRight') {
       event.preventDefault(); shiftPhoto(event.key === 'ArrowLeft' ? -1 : 1);
     }
   });
   let touch = null;
-  $('view-stage').addEventListener('touchstart', event => {
-    touch = event.touches.length === 1 ? [event.touches[0].clientX, event.touches[0].clientY] : null;
+  viewStage.addEventListener('touchstart', event => {
+    touch = !viewStage.classList.contains('is-enlarged') && event.touches.length === 1 ?
+      [event.touches[0].clientX, event.touches[0].clientY] : null;
   }, {passive:true});
-  $('view-stage').addEventListener('touchcancel', () => { touch=null; }, {passive:true});
-  $('view-stage').addEventListener('touchend', event => {
+  viewStage.addEventListener('touchcancel', () => { touch=null; }, {passive:true});
+  viewStage.addEventListener('touchend', event => {
     if (!touch || !event.changedTouches.length) return;
     const dx = event.changedTouches[0].clientX - touch[0];
     const dy = event.changedTouches[0].clientY - touch[1];
