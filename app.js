@@ -61,7 +61,6 @@
   let activePage = 'home';
   let focusAfterClose = null;
   let storageAvailable = true;
-  let pageTransition = null;
 
   const $ = id => document.getElementById(id);
   const escape = value => String(value == null ? '' : value).replace(/[&<>"']/g, char =>
@@ -470,24 +469,14 @@
     if (Math.abs(dx) > 47 && Math.abs(dx) > Math.abs(dy)*1.35) shiftPhoto(dx < 0 ? 1 : -1);
   }, {passive:true});
   function navigate() {
-    const requestedHash = window.location.hash;
-    pageTransition?.skipTransition();
-    const draw = () => {
-      if (window.location.hash !== requestedHash) return;
-      readRoute();
-      window.scrollTo({top:0,behavior:'instant'});
-      main.focus({preventScroll:true});
-    };
-    if (!reduceMotion() && document.startViewTransition) {
-      const transition = document.startViewTransition(draw);
-      pageTransition = transition;
-      transition.ready?.catch(() => {});
-      transition.finished.catch(() => {}).then(() => { if (pageTransition === transition) pageTransition = null; });
-    } else {
-      draw();
-      if (!reduceMotion()) main.animate?.([{opacity:0.55,transform:'translateY(6px)'},{opacity:1,transform:'none'}],
-        {duration:220,easing:'ease-out'});
-    }
+    main.getAnimations?.().forEach(animation => animation.cancel());
+    readRoute();
+    window.scrollTo({top:0,behavior:'instant'});
+    main.focus({preventScroll:true});
+    if (!reduceMotion()) main.animate?.(
+      [{opacity:0.65, transform:'translateY(5px)'}, {opacity:1, transform:'none'}],
+      {duration:200, easing:'cubic-bezier(.2,.68,.18,1)'}
+    );
   }
   window.addEventListener('hashchange',navigate);
   readRoute();
