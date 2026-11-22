@@ -1,0 +1,64 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+  <meta name="theme-color" content="#f7f6f0">
+  <meta name="description" content="建筑23级杭州认识实习摄影档案。按建筑项目阅读现场观察，翻看建筑学长与 goa 大象设计的企业交流照片。">
+  <title>建筑23级杭州认识实习</title>
+  <link rel="icon" href="data:,">
+  <link rel="stylesheet" href="style.css">
+  <script defer src="catalog.js"></script>
+  <script defer src="project-notes.js"></script>
+  <script defer src="project-context.js"></script>
+  <script defer src="fieldwork.js"></script>
+  <script defer src="card-photos.js"></script>
+  <script defer src="card-films.js"></script>
+  <script defer src="app.js"></script>
+</head>
+<body>
+  <a class="skip" href="#content">跳到主要内容</a>
+  <header class="mast">
+    <div class="wrap mast-inner">
+      <a href="#/" class="wordmark" aria-label="建筑23级杭州认识实习首页">
+        <span class="mark" aria-hidden="true"><i></i><i></i><i></i></span>
+        <span>建筑实习影像</span>
+      </a>
+      <nav aria-label="主导航">
+        <a href="#/" data-tab="home">首页</a>
+        <a href="#/atlas" data-tab="atlas">建筑参观</a>
+        <a href="#/exchange" data-tab="exchange">企业交流</a>
+        <a href="#/days" data-tab="days">实习日记</a>
+        <a href="#/picks" data-tab="picks">我的选片<span class="nav-count" id="pick-count"></span></a>
+      </nav>
+    </div>
+  </header>
+  <main id="content" tabindex="-1">
+    <noscript>请开启浏览器的 JavaScript 以浏览互动相册。</noscript>
+  </main>
+  <footer class="foot">
+    <div class="wrap foot-inner"><a href="#/">建筑23级杭州认识实习</a><span>建筑参观与企业交流 · 现场摄影档案</span><a href="#/atlas">项目索引 <span aria-hidden="true">↗</span></a></div>
+  </footer>
+  <dialog id="viewer" aria-labelledby="view-title">
+    <div class="viewer-inner">
+      <div class="view-head">
+        <span class="view-count" id="view-count"></span>
+        <div class="view-tools">
+          <button type="button" id="view-pick"></button>
+          <a id="view-download" download>下载展示图</a>
+          <button type="button" id="view-close" aria-label="关闭大图" autofocus>关闭 <span aria-hidden="true">×</span></button>
+        </div>
+      </div>
+      <div class="view-stage" id="view-stage">
+        <button type="button" id="view-prev" class="arrow" aria-label="上一张照片">‹</button>
+        <img id="view-image" alt="" draggable="false">
+        <button type="button" id="view-next" class="arrow" aria-label="下一张照片">›</button>
+      </div>
+      <div class="view-footer" aria-live="polite" aria-atomic="true">
+        <div><a id="view-project"></a><h2 id="view-title"></h2></div>
+        <span class="view-exif" id="view-exif"></span>
+      </div>
+    </div>
+  </dialog>
+</body>
+</html>
