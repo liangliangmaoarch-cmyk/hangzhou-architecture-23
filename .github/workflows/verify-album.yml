@@ -1,0 +1,24 @@
+name: Verify published album
+on:
+  push:
+    branches: [verify-photo-previews]
+    paths: ['.github/workflows/verify-album.yml', 'verify/album.py']
+permissions:
+  contents: read
+jobs:
+  browser:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+      - run: |
+          python3 -m venv "$RUNNER_TEMP/album-test"
+          "$RUNNER_TEMP/album-test/bin/pip" --disable-pip-version-check install 'selenium>=4.25,<5'
+          "$RUNNER_TEMP/album-test/bin/python" verify/album.py
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: published-album-preview
+          path: preview-check/*.png
+          if-no-files-found: ignore
+          retention-days: 7
