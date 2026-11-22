@@ -1,7 +1,15 @@
 # 建筑23级杭州认识实习
 
-[打开影集](https://liangliangmaoarch-cmyk.github.io/hangzhou-architecture-23/)
+[打开六日实习影集](https://liangliangmaoarch-cmyk.github.io/hangzhou-architecture-23/)
 
-六天的建筑参观与企业交流，共收录 34 组相册、262 张精选照片和 8 段现场短片。可按日期、建筑或企业浏览，也可以将照片加入浏览器本地的选片清单。
+建筑23级同学在杭州参观建筑，并走进 goa 大象设计和建筑学长交流。影集收录 34 组相册、230 张现场照片和 8 段短片。可以按日期翻看胶卷，或从项目索引直接进入建筑和企业交流相册。
 
-网页使用原生 HTML、CSS 和 JavaScript。GitHub Pages 从 main 分支的根目录发布，首页为 index.html。media 中存放展示照片，media/t 中存放缩略图，media/films 中存放短片及其封面。
+照片可点开放大，支持键盘方向键和手机左右滑动。建筑批注随对应画面显示，收藏保存在当前浏览器中。
+
+## 运行
+
+GitHub Pages 从 `main` 分支的根目录发布。网站使用相对资源路径和哈希导航，无需构建。在本地运行 `python3 -m http.server 8000`，然后访问 `http://localhost:8000/` 即可预览。
+
+## 影像
+
+大卡片按显示尺寸和屏幕像素密度选择封面或大图。小胶卷使用独立缩略图，相册阅读和全屏查看加载大图。系统开启“减少动态效果”时，页面和照片会直接切换。

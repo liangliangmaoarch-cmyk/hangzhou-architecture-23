@@ -16,8 +16,8 @@
   const projectPhotos = new Map(album.projects.map(project => [project.id, []]));
   allPhotos.forEach(photo => projectPhotos.get(photo.project).push(photo));
   const exchangeOrder = {
-    ZY: ['P475','P481','P473','D0686','D0688','D0690','D0692','P477','P478','P474'],
-    GOA: ['P511','D0774','P509','P514','P515','P508','P512','P513','P510','P516']
+    ZY: ['P475','P473','P481','D0688','D0690','D0692','P477','P474'],
+    GOA: ['P511','D0754','D0757','P509','P515','P513','P510','D0764','D0770','P516']
   };
   for (const [code, ids] of Object.entries(exchangeOrder)) {
     const position = new Map(ids.map((id, n) => [id, n]));
@@ -38,11 +38,11 @@
   };
   const rolls = [
     {day:'11-02', title:'良渚', subtitle:'校园、水院与山墙', accent:'#a9c5dc', frames:['D0535','D0552','D0558','D0560','P501','P504','P499','D0540']},
-    {day:'11-03', title:'版本馆与象山', subtitle:'青瓷屏扇与木屋盖', accent:'#d1bda0', frames:['P437','D0619','P404','D0633','P487','D0657','D0662','D0669']},
-    {day:'11-04', title:'建筑学长', subtitle:'设计演示与湿地展厅', accent:'#d09aa6', frames:['D0686','D0690','D0692','P448','D0698','P482','D0705','D0716']},
+    {day:'11-03', title:'版本馆与象山', subtitle:'青瓷屏扇与木屋盖', accent:'#d1bda0', frames:['P437','D0619','P404','D0633','P487','P491','D0662','D0669']},
+    {day:'11-04', title:'建筑学长', subtitle:'设计演示与湿地展厅', accent:'#d09aa6', frames:['D0688','D0690','D0692','P448','D0698','P482','D0705','D0716']},
     {day:'11-05', title:'宁波', subtitle:'瓦爿墙、会展与江岸', accent:'#d7bc7e', frames:['P415','P418','D0727','D0730','D0739','D0740','P036','P421']},
     {day:'11-06', title:'西湖与 goa', subtitle:'湖岸步行与圆桌问答', accent:'#a5bb91', frames:['D0743','D0747','P335','P462','D0754','D0757','D0764','D0770']},
-    {day:'11-07', title:'杭钢与紫金港', subtitle:'旧厂区与校园步道', accent:'#d39781', frames:['D0776','D0782','D0784','P463','P337','P430','P465','P467']}
+    {day:'11-07', title:'杭钢与紫金港', subtitle:'旧厂区与校园步道', accent:'#d39781', frames:['D0779','D0782','D0784','P463','P337','P430','P465','P467']}
   ];
   const archiveTitle = '建筑23级杭州认识实习';
   const localKey = 'hz-architecture-23-photo-picks-v1';
@@ -61,11 +61,15 @@
   let activePage = 'home';
   let focusAfterClose = null;
   let storageAvailable = true;
+  let pageTransition = null;
 
   const $ = id => document.getElementById(id);
   const escape = value => String(value == null ? '' : value).replace(/[&<>"']/g, char =>
     ({'&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;'})[char]);
   const asset = (id, small) => 'media/' + (small ? 't/' : '') + id + '.webp';
+  const coverAsset = id => 'media/covers/' + id + '.webp';
+  const reduceMotion = () => Boolean(window.matchMedia?.('(prefers-reduced-motion: reduce)')?.matches);
+  const annotation = photo => notes[photo.project]?.frames?.[photo.id] || '';
   const projectUrl = code => '#/project/' + encodeURIComponent(code);
   const projectTitle = project => ({ZY:'建筑学长 · 智元空间',GOA:'goa 大象设计'})[project.id] || project.name;
   const cover = project => photos.get(covers[project.id]) || projectPhotos.get(project.id)[0];
@@ -76,6 +80,40 @@
   const arrow = '<b aria-hidden="true">↗</b>';
   const link = (url,label) => '<a class="link" href="' + escape(url) + '">' + escape(label) + ' ' + arrow + '</a>';
   const titleOf = name => { document.title = name ? name + ' · ' + archiveTitle : archiveTitle; };
+
+  function responsiveSources(photo, sizes, largeCard = false) {
+    const full = asset(photo.id);
+    const preview = largeCard && photo.coverWidth ? coverAsset(photo.id) : asset(photo.id, true);
+    const previewWidth = largeCard && photo.coverWidth ? photo.coverWidth : photo.thumbWidth;
+    if (!previewWidth || previewWidth >= photo.width) return ' src="' + full + '"';
+    return ' src="' + (largeCard ? full : preview) + '" srcset="' + preview + ' ' + previewWidth + 'w, ' +
+      full + ' ' + photo.width + 'w" sizes="' + sizes + '"';
+  }
+
+  function setFrameImage(image, photo, direction, label) {
+    image.alt = label;
+    if (image.dataset.frame === photo.id) return;
+    image.dataset.frame = photo.id;
+    image.onload = null;
+    image.getAnimations?.().forEach(animation => animation.cancel());
+    if (direction && !reduceMotion() && image.animate) {
+      const enter = () => {
+        if (image.dataset.frame !== photo.id) return;
+        image.onload = null;
+        image.animate([{opacity:0.55, transform:'translateX(' + 18 * Math.sign(direction) + 'px)'},
+          {opacity:1, transform:'translateX(0)'}], {duration:240,easing:'cubic-bezier(.22,.68,.18,1)'});
+      };
+      image.onload = enter;
+    }
+    image.src = asset(photo.id);
+    if (image.complete && image.naturalWidth && image.onload) image.onload();
+  }
+
+  function showAnnotation(element, photo) {
+    const comment = annotation(photo);
+    element.textContent = comment;
+    element.hidden = !comment;
+  }
 
   function crumb(section, url) {
     return '<div class="crumb"><a href="#/">首页</a><span class="slash" aria-hidden="true">/</span>' +
@@ -88,12 +126,16 @@
     const name = projectTitle(project);
     const group = projectPhotos.get(project.id);
     const tag = opts.corporate ? (project.id === 'ZY' ? '建筑学长企业交流' : '设计机构参访') : chapterLabel(project);
+    const sizes = opts.corporate ? '(max-width: 600px) 94vw, (max-width: 1650px) 48vw, 755px' :
+      (opts.wide ? '(max-width: 900px) 95vw, ' : '(max-width: 600px) 95vw, (max-width: 900px) 48vw, ') +
+      '(max-width: 1650px) 32vw, 505px';
+    const comment = annotation(photo) || notes[project.id].focus;
     return '<a class="project-card" href="' + projectUrl(project.id) + '">' +
-      '<div class="card-image"><img loading="lazy" decoding="async" src="' + asset(photo.id, true) + '" alt="' +
+      '<div class="card-image"><img loading="lazy" decoding="async"' + responsiveSources(photo,sizes,true) + ' alt="' +
         escape(name + '，' + photo.caption) + '" width="' + photo.width + '" height="' + photo.height + '"></div>' +
       '<div class="card-kicker"><span>' + escape(tag) + '</span><span class="card-n">' + countText(group.length) + '</span></div>' +
       '<h3><span>' + escape(name) + '</span><span class="card-arrow" aria-hidden="true">↗</span></h3>' +
-      (opts.focus && notes[project.id] ? '<p class="card-focus">' + escape(notes[project.id].focus) + '</p>' : '') + '</a>';
+      (opts.focus ? '<p class="card-focus">' + escape(comment) + '</p>' : '') + '</a>';
   }
 
   function corporateCards() {
@@ -127,7 +169,7 @@
       '<section class="section"><div class="wrap"><div class="section-head"><div><h2>建筑参观</h2>' +
       '<p class="section-sub">在良渚博物院看水院，在水岸山居看木屋架，在杭钢公园沿旧输送廊步行。</p></div>' +
       link('#/atlas','全部项目') + '</div><div class="card-grid home-grid">' +
-      ['LJM','WATER','STEEL'].map(id => projectCard(projects.get(id),{focus:true})).join('') +
+      ['LJM','WATER','STEEL'].map((id,i) => projectCard(projects.get(id),{focus:true,wide:i===2})).join('') +
       '</div></div></section><section class="section exchange-home"><div class="wrap"><div class="section-head"><div><h2>企业交流</h2>' +
       '<p class="section-sub">走进建筑学长的 AI 讲座，围坐在 goa 大象设计的会议桌旁。</p></div>' +
       link('#/exchange','查看两场交流') + '</div>' + corporateCards() + '</div></section>';
@@ -172,7 +214,8 @@
     return '<div class="photo-grid">' + list.map((photo,index) => {
       const picked = picks.has(photo.id);
       return '<figure class="photo-tile"><button class="photo-open" type="button" data-photo="' + photo.id +
-        '" aria-label="查看大图，' + escape(photo.caption) + '"><img src="' + asset(photo.id,true) + '" alt="' + escape(photo.caption) +
+        '" aria-label="查看大图，' + escape(photo.caption) + '"><img' +
+        responsiveSources(photo,'(max-width: 600px) 47vw, (max-width: 900px) 48vw, (max-width: 1650px) 32vw, 505px') + ' alt="' + escape(photo.caption) +
         '" width="' + photo.width + '" height="' + photo.height + '" loading="' + (index < 3 ? 'eager' : 'lazy') + '" decoding="async"></button>' +
         '<figcaption class="photo-text"><span>' + (showPlace ? '<span class="photo-place">' + escape(photo.time + ' · ' + projectTitle(projects.get(photo.project))) + '</span>' : '') +
         '<span class="photo-index">' + photo.id + '</span>' + escape(photo.caption) + '</span>' +
@@ -193,15 +236,16 @@
       '<div class="reader-main"><div class="reader-stage"><button type="button" class="read-arrow" data-read-step="-1" aria-label="胶卷上一张">‹</button>' +
       '<button id="reader-open" class="reader-open" type="button"><img id="reader-image" alt=""></button>' +
       '<button type="button" class="read-arrow" data-read-step="1" aria-label="胶卷下一张">›</button></div>' +
-      '<div class="reader-caption" aria-live="polite"><span id="reader-count"></span><span id="reader-caption"></span></div><div class="reader-track"><span id="reader-progress"></span></div></div></section>';
+      '<div class="reader-caption" aria-live="polite"><span id="reader-count"></span><span id="reader-caption"></span></div>' +
+      '<div class="reader-track"><span id="reader-progress"></span></div><p class="frame-note" id="reader-note" aria-label="现场批注" hidden></p></div></section>';
   }
 
-  function showReader(index) {
+  function showReader(index, direction = 0) {
     if (!readerPhotos.length || !$('reader-image')) return;
     readerIndex = (index + readerPhotos.length) % readerPhotos.length;
     const p = readerPhotos[readerIndex];
-    $('reader-image').src = asset(p.id);
-    $('reader-image').alt = p.caption;
+    setFrameImage($('reader-image'),p,direction,p.caption);
+    showAnnotation($('reader-note'),p);
     $('reader-open').dataset.photo = p.id;
     $('reader-open').setAttribute('aria-label','查看大图，' + p.caption);
     $('reader-caption').textContent = p.caption;
@@ -327,11 +371,11 @@
     document.body.classList.add('locked');
   }
 
-  function renderViewer() {
+  function renderViewer(direction = 0) {
     const photo = photos.get(viewerIds[viewerIndex]);
     const project = projects.get(photo.project);
-    $('view-image').src = asset(photo.id);
-    $('view-image').alt = projectTitle(project) + '，' + photo.caption;
+    setFrameImage($('view-image'),photo,direction,projectTitle(project) + '，' + photo.caption);
+    showAnnotation($('view-note'),photo);
     $('view-count').textContent = pad(viewerIndex+1) + ' / ' + pad(viewerIds.length);
     $('view-title').textContent = photo.caption;
     $('view-project').textContent = projectTitle(project) + ' ↗';
@@ -356,14 +400,14 @@
   function shiftPhoto(direction) {
     if (viewerIds.length < 2) return;
     viewerIndex = (viewerIndex + direction + viewerIds.length) % viewerIds.length;
-    renderViewer();
+    renderViewer(direction);
   }
 
   main.addEventListener('click', event => {
     const button = event.target.closest('button');
     if (!button) return;
-    if (button.hasAttribute('data-read-step')) { showReader(readerIndex + Number(button.dataset.readStep)); return; }
-    if (button.hasAttribute('data-read-index')) { showReader(Number(button.dataset.readIndex)); return; }
+    if (button.hasAttribute('data-read-step')) { const step=Number(button.dataset.readStep); showReader(readerIndex + step,step); return; }
+    if (button.hasAttribute('data-read-index')) { const index=Number(button.dataset.readIndex); showReader(index,index-readerIndex); return; }
     if (button.hasAttribute('data-photo')) { openPhoto(button.dataset.photo,button); return; }
     if (button.hasAttribute('data-pick')) { togglePick(button.dataset.pick); return; }
     if (button.hasAttribute('data-reset')) { atlasCategory=''; searchText=''; atlas(); $('atlas-search').focus(); return; }
@@ -376,7 +420,8 @@
   main.addEventListener('keydown', event => {
     if (event.target.closest('#roll-reader') && (event.key === 'ArrowLeft' || event.key === 'ArrowRight')) {
       event.preventDefault();
-      showReader(readerIndex + (event.key === 'ArrowLeft' ? -1 : 1));
+      const direction = event.key === 'ArrowLeft' ? -1 : 1;
+      showReader(readerIndex + direction,direction);
     }
   });
   let readerTouch = null;
@@ -389,7 +434,10 @@
     const dx = event.changedTouches[0].clientX - readerTouch[0];
     const dy = event.changedTouches[0].clientY - readerTouch[1];
     readerTouch = null;
-    if (Math.abs(dx) > 50 && Math.abs(dx) > Math.abs(dy) * 1.4) showReader(readerIndex + (dx < 0 ? 1 : -1));
+    if (Math.abs(dx) > 50 && Math.abs(dx) > Math.abs(dy) * 1.4) {
+      const step = dx < 0 ? 1 : -1;
+      showReader(readerIndex + step,step);
+    }
   }, {passive:true});
   main.addEventListener('touchcancel', () => { readerTouch = null; }, {passive:true});
   document.querySelector('.skip').addEventListener('click', event => { event.preventDefault(); main.focus(); });
@@ -421,6 +469,26 @@
     touch = null;
     if (Math.abs(dx) > 47 && Math.abs(dx) > Math.abs(dy)*1.35) shiftPhoto(dx < 0 ? 1 : -1);
   }, {passive:true});
-  window.addEventListener('hashchange', () => { readRoute(); window.scrollTo({top:0,behavior:'instant'}); main.focus({preventScroll:true}); });
+  function navigate() {
+    const requestedHash = window.location.hash;
+    pageTransition?.skipTransition();
+    const draw = () => {
+      if (window.location.hash !== requestedHash) return;
+      readRoute();
+      window.scrollTo({top:0,behavior:'instant'});
+      main.focus({preventScroll:true});
+    };
+    if (!reduceMotion() && document.startViewTransition) {
+      const transition = document.startViewTransition(draw);
+      pageTransition = transition;
+      transition.ready?.catch(() => {});
+      transition.finished.catch(() => {}).then(() => { if (pageTransition === transition) pageTransition = null; });
+    } else {
+      draw();
+      if (!reduceMotion()) main.animate?.([{opacity:0.55,transform:'translateY(6px)'},{opacity:1,transform:'none'}],
+        {duration:220,easing:'ease-out'});
+    }
+  }
+  window.addEventListener('hashchange',navigate);
   readRoute();
 })();
